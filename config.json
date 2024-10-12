@@ -1,0 +1,8 @@
+{
+    "show_device_equipment": false,
+    "auto_open_box_max_price": 2000,
+    "auto_buy_item_max_price": 2000,
+    "sleep_before_start": 10,
+    "account_delay": 3,
+    "countdown_loop": 500
+}

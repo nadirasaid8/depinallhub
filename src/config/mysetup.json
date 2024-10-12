@@ -1,0 +1,8 @@
+{
+    "use_proxy": false,
+    "upgrade_skill": true,
+    "auto_task": true,
+    "auto_open_box": true,
+    "auto_buy_item": false,
+    "auto_sell_item": true
+}
