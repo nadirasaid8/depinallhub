@@ -2,7 +2,7 @@
 
 Full feature features as in the original D3p1n Alliance bot telegram.
 
-[TELEGRAM CHANNEL](https://t.me/Deeplchain) | [TWITTER](https://x.com/itsjaw_real)
+[TELEGRAM CHANNEL](https://t.me/Deeplchain) | [CONTACT](https://t.me/imspecials)
 
 ## REGISTER FIRST : [D3P1N ALIANCE](https://t.me/DePIN_Alliance_Bot?start=P8YJYaETWS)
 
@@ -132,4 +132,4 @@ python main.py --setup mysetup
 This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## Contact
-For questions or support, please contact [ https://t.me/DeeplChainSup ]
+For questions or support, please contact [ https://t.me/DeeplChain ]
