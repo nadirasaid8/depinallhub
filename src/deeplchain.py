@@ -23,7 +23,7 @@ def banner():
  ██║   ██║   ███████║╚█████╔╝██║  ██║╚███╔███╔╝
  ╚═╝   ╚═╝   ╚══════╝ ╚════╝ ╚═╝  ╚═╝ ╚══╝╚══╝  """ 
     print(Fore.GREEN + Style.BRIGHT + banner + Style.RESET_ALL)
-    print(hju + f" DePin Alliance Telegram Bot (V.2.1)")
+    print(hju + f" DePin Alliance Telegram Bot (V.2.2)")
     print(mrh + f" FREE TO USE = Join us on {pth}t.me/DEEPLCHAIN")
     print(mrh + f" before start please '{hju}git pull{mrh}' to update bot")
     log_line()
@@ -47,7 +47,7 @@ def log(message, *args, **kwargs):
     end = kwargs.pop('end', '\n')
     if message != last_log_message:
         full_message = message + ' ' + ' '.join(map(str, args)) 
-        print(f"[{current_time}] {full_message}", flush=flush, end=end)
+        print(htm + f"[{current_time}] {full_message}", flush=flush, end=end)
         last_log_message = message
 
 def log_line():

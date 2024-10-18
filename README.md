@@ -6,6 +6,10 @@ Full feature features as in the original D3p1n Alliance bot telegram.
 
 ## REGISTER FIRST : [D3P1N ALIANCE](https://t.me/DePIN_Alliance_Bot?start=P8YJYaETWS)
 
+## Update : 2024-10-19
+  - Script base optimization
+  - Add Auto Accept Member if you're Guild Owner 
+
 # Feature 
   - Support for multiple proxy servers
   - Support for multiple telegram accounts

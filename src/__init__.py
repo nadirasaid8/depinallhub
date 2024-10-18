@@ -11,3 +11,4 @@ from base64 import urlsafe_b64decode
 from json.decoder import JSONDecodeError
 from src.headers import headers
 from src.core import Depin, load_proxies
+from src.agent import generate_random_user_agent

@@ -1,3 +1,4 @@
+import sys
 from . import *
 from src.deeplchain import number, awak, banner, clear, log, log_line, countdown_timer, read_config, mrh, pth, kng, hju, bru, htm, reset
 
@@ -98,7 +99,7 @@ def show_config():
             print(f" {key} updated to {config[key]}")
         
         elif choice == '7':
-            break  # Exit the loop and return to the main menu
+            break
         else:
             print(" Invalid choice. Please try again.")
 
@@ -108,6 +109,7 @@ def run_bot(use_proxy, upgrade_skill, auto_task, auto_open_box, auto_buy_item, a
     time_start = config.get('sleep_before_start', 5)
     delay = config.get('account_delay', 5)
     loop = config.get('countdown_loop', 3800)
+    
     countdown_timer(time_start)
     proxies = load_proxies() if use_proxy else None
 
@@ -121,29 +123,27 @@ def run_bot(use_proxy, upgrade_skill, auto_task, auto_open_box, auto_buy_item, a
         log(mrh + f"data.txt file not found.")
         return
 
-    for i, query_data in enumerate(query_data_list, start=1):
-        proxy = random.choice(proxies) if proxies and use_proxy else None
-        dep = Depin(proxy=proxy)
-        
-        log(hju + f"Processing account {pth}{i}/{len(query_data_list)}")
-        if proxy:
-            proxy_url = proxy
-            host_port = proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url.split('//')[-1]
-            log(hju + f"Using proxy: {pth}{host_port}")
-            log(htm + "~" * 38)
+    while True:
+        try:
+            for i, query_data in enumerate(query_data_list, start=1):
+                proxy = random.choice(proxies) if proxies and use_proxy else None
+                dep = Depin(proxy=proxy)
 
-        user_data = dep.extract_user_data(query_data)
-        user_id = user_data.get("id")
-        if not user_id:
-            log(mrh + f"User ID not found in data.")
-            continue
+                log(hju + f"Processing account {pth}{i}/{len(query_data_list)}")
+                if proxy:
+                    proxy_url = proxy
+                    host_port = proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url.split('//')[-1]
+                    log(hju + f"Using proxy: {pth}{host_port}")
+                    log(htm + "~" * 38)
 
-        token = dep.local_token(user_id) or dep.login(query_data, user_id)
+                user_data = dep.extract_user_data(query_data)
+                user_id = user_data.get("id")
+                if not user_id:
+                    log(mrh + f"User ID not found in data.")
+                    continue
+                token = dep.local_token(user_id) or dep.login(query_data, user_id)
 
-        while True:
-            try:
                 dep.user_data(user_id)
-                dep.j_l(user_id)
                 dep.daily_checkin(user_id)
                 dep.claim_mining(user_id)
                 dep.contribute(user_id)
@@ -152,59 +152,77 @@ def run_bot(use_proxy, upgrade_skill, auto_task, auto_open_box, auto_buy_item, a
                 if not device_indices:
                     log(bru + f"No valid device indices : {pth}{user_id}")
                     break
+
                 device_index = device_indices[0]
+                
                 if auto_open_box:
                     dep.open_box(user_id, max_price)
                 else:
                     log(bru + f"Auto open cyber box is disabled!")
+
                 if auto_buy_item:
                     dep.auto_buy_item(user_id, device_index, max_item_price)
                 else:
                     log(bru + f"Auto buy item is disabled!")
+
                 for item_type in ["CPU", "GPU", "RAM", "STORAGE"]:
                     dep.get_items_by_type(user_id, item_type)
+
                 if auto_task:
-                    dep.get_task(user_id)
-                    dep.complete_quest(user_id)
+                    dep.get_tasks(user_id)
+                    dep.complete_quests(user_id)
                 else:
                     log(bru + f"Auto complete task is disabled!")
+
                 if upgrade_skill:
                     dep.upgrade_skill(user_id)
                 else:
                     log(bru + f"Auto upgrade skill is disabled!")
+
                 if auto_sell_item:
                     dep.sell_user_items(user_id)
                 else:
                     log(bru + f"Auto sell item is disabled!")
-                break
-            except requests.exceptions.ProxyError as e:
-                log(mrh + f"Proxy error occurred: {e}")
-                if "407" in str(e):
-                    log(bru + f"Proxy authentication failed. Trying another.")
-                    if proxies:
-                        proxy = random.choice(proxies)
-                        log(bru + f"Switching proxy: {pth}{proxy}")
-                    else:
-                        log(mrh + f"No more proxies available.")
-                        break
+
+                dep.j_l(user_id)
+                log_line()
+                
+                countdown_timer(delay)
+            countdown_timer(loop)
+
+        except requests.exceptions.ProxyError as e:
+            log(mrh + f"Proxy error occurred: {e}")
+            if "407" in str(e):
+                log(bru + f"Proxy authentication failed. Trying another.")
+                if proxies:
+                    proxy = random.choice(proxies)
+                    log(bru + f"Switching proxy: {pth}{proxy}")
                 else:
-                    log(htm + f"An error occurred: {htm}{e}")
+                    log(mrh + f"No more proxies available.")
                     break
+            else:
+                log(htm + f"An error occurred: {htm}{e}")
+                break
 
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 401:
-                    log(bru + f"Token expired or Unauth. Attempting to login")
-                    if dep.is_expired(token):
-                        token = dep.login(query_data, user_id)
-                    if token is False:
-                        return int(datetime.now().timestamp()) + 8 * 3600
-                else:
-                    log(mrh + f"HTTP error occurred: {htm}{e}")
-                    return
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                log(bru + f"Token expired or Unauthorized. Attempting to login")
+                if dep.is_expired(token):
+                    token = dep.login(query_data, user_id)
+                if token is False:
+                    return int(datetime.now().timestamp()) + 8 * 3600
+            else:
+                log(mrh + f"HTTP error occurred: {htm}{e}")
+                return
+        
+        except (requests.exceptions.ConnectionError, 
+                requests.exceptions.Timeout,
+                requests.exceptions.RequestException) as e:
+            log(f"An error occurred: {htm}{e}")
 
-        log_line()
-        countdown_timer(delay)
-    countdown_timer(loop)
+        except Exception as e:
+            log(mrh + f"An error occurred: {htm}{e}")
+            return
 
 def main():
     parser = argparse.ArgumentParser(description="Run the bot with a specified setup.")
@@ -265,7 +283,6 @@ def main():
                 else:
                     log(mrh + f"Invalid choice. Please try again.")
                 time.sleep(1)
-            except Exception as e:
-                log(mrh + f"An error occurred in the main loop: {kng}{str(e)}")
-                countdown_timer(10)
+            except KeyboardInterrupt as e:
+                sys.exit()
 

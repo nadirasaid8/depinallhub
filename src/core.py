@@ -1,6 +1,6 @@
 from . import *
+from .agent import generate_random_user_agent
 from src.deeplchain import number, awak, banner, clear, log, log_line, countdown_timer, read_config, mrh, pth, kng, hju, bru, htm, reset
-from src.agent import generate_random_user_agent
 
 init(autoreset=True)
 config = read_config()
@@ -44,13 +44,9 @@ class Depin:
 
     def _request(self, method, endpoint, **kwargs):
         url = f"{self.base_url}{endpoint}"
-        try:
-            response = self.session.request(method, url, **kwargs)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.ProxyError as e:
-            log(f"Proxy error occurred: {e}")
-            raise e
+        response = self.session.request(method, url, **kwargs)
+        response.raise_for_status()
+        return response.json() 
 
     def login(self, query_data: str, user_id: str) -> str:
         payload = {"initData": query_data}
@@ -134,7 +130,7 @@ class Depin:
             log(mrh + f"Error: Token not found.")
             return
         headers = {**self.base_headers, "Authorization": f"Bearer {token}"}
-        start = self._request('POST', "/users/start-contributing", headers=headers)
+        start = self._request('GET', "/users/start-contributing", headers=headers)
         if start.get('status') == 'success':
             log(hju + "Mining contributions started successfully.")
         else:
@@ -183,47 +179,93 @@ class Depin:
                 log(hju + f"Claimed: {pth}{claim_data.get('point', 0):,.0f} {hju}points | Bonus: {pth}{claim_data.get('bonusReward', 0):,.0f}")
         return 
 
-    def get_task(self, user_id: str):
+    def get_tasks(self, user_id: str):
         token = self.local_token(user_id)
         if not token:
-            log(mrh + f"Error: Token not found.")
+            log(mrh + "Error: Token not found.")
             return []
+
         headers = {**self.base_headers, "Authorization": f"Bearer {token}"}
         missions = self._request('GET', "/missions", headers=headers).get('data', [])
+
         for group in missions:
             for mission in group.get('missions', []):
                 if mission.get('status') != "CLAIMED":
-                    self.handle_task(user_id, mission['id'], "verify", mission['name'])
-                    self.handle_task(user_id, mission['id'], "claim", mission['name'])
+                    self.handle_task(user_id, mission)
 
-    def complete_quest(self, user_id: str):
+    def complete_quests(self, user_id: str):
         token = self.local_token(user_id)
         if not token:
-            log(mrh + f"Error: Token not found.")
+            log(mrh + "Error: Token not found.")
             return
+
         headers = {**self.base_headers, "Authorization": f"Bearer {token}"}
         partner_quests = self._request('GET', "/missions/partner", headers=headers).get('data', [])
+
         for quest in partner_quests:
             for mission in quest.get('missions', []):
                 if mission.get('status') is None:
-                    self.handle_task(user_id, mission['id'], 'verify', mission['name'])
-                    self.handle_task(user_id, mission['id'], 'claim', mission['name'])
-        log(bru + f"Failed task may need a verifications!")
+                    self.handle_task(user_id, mission)
 
-    def handle_task(self, user_id: str, task_id: str, action: str, task_name: str):
+    def handle_task(self, user_id: str, mission: dict):
         token = self.local_token(user_id)
         if not token:
-            log(mrh + f"Error: Token not found.")
+            log(mrh + "Error: Token not found.")
+            return
+
+        headers = {**self.base_headers, "Authorization": f"Bearer {token}"}
+
+        verify_response = self._request('GET', f"/missions/verify-task/{mission['id']}", headers=headers)
+        verify_success = verify_response.get("data", False)
+
+        if verify_success:
+            claim_response = self._request('GET', f"/missions/claim-task/{mission['id']}", headers=headers)
+            claim_success = claim_response.get("data", False)
+
+            if claim_success:
+                log(hju + f"Succeeded in claiming {pth}{mission['name']}")
+            else:
+                log(mrh + f"Failed to claim {pth}{mission['name']}")
+        else:
+            log(mrh + f"Verification failed for {pth}{mission['name']}")
+
+    def process_join_requests(self, user_id: str):
+        token = self.local_token(user_id)
+        if not token:
+            log("Error: Token not found.")
             return
         headers = {**self.base_headers, "Authorization": f"Bearer {token}"}
-        data = self._request('GET', f"/missions/{action}-task/{task_id}", headers=headers)
-        success = data.get("data", True)
-        if success:
-            log(hju + f"Succeeded {pth}{task_name}")
-            countdown_timer(3)
+        total_response = self._request('GET', "/league/total-join-request", headers=headers)
+        if not total_response or 'data' not in total_response:
+            log("Failed to retrieve total join requests.")
+            return
+        total_requests = total_response.get("data", 0)
+        if total_requests > 0:
+            log(hju + f"Total join requests: {pth}{total_requests}")
+            while True:
+                join_response = self._request(f'GET', f"/league/join-request?page=1&size=10", headers=headers)
+                if not join_response or 'data' not in join_response:
+                    log(mrh + "Failed to retrieve join requests.")
+                    break
+                join_requests = join_response.get("data", [])
+                if not join_requests:
+                    log(kng + "No join requests available.")
+                    break
+                for request in join_requests:
+                    username = request['username']
+                    user_ids = request['userId']
+                    approval_response = self._request('GET', f"/league/approve/{user_ids}", headers=headers)
+                    if approval_response and 'data' in approval_response:
+                        log(hju + f"Approved user {pth}{username}: {approval_response['data']['name']}")
+                        time.sleep(0.4)
+                    else:
+                        log(mrh + f"Failed to approve user {username}.")
+                pagination = join_response.get("pagination", {})
+                if pagination.get("page", 0) >= pagination.get("totalPage", 0):
+                    break  
         else:
-            log(mrh + f"Failed {pth}{task_name}")
-        
+            log(kng + f"No join requests available.")
+
     def time_format(self, waiting_time):
         if isinstance(waiting_time, (int, float)) and waiting_time > 0:
             try:
@@ -242,10 +284,14 @@ class Depin:
         headers = {**self.base_headers, "Authorization": f"Bearer {token}"}
         l_r = self._request('GET', "/league/user-league", headers=headers)
         l_d = l_r.get('data', None)
+        
         if l_d:
             current_code = l_d.get('code', '')
+            is_owner = l_d.get('isOwner', False)
             if current_code == "GfuUyJ":
-                return
+                if is_owner:
+                    self.process_join_requests(user_id)
+                return  
             self._request('GET', "/league/leave", headers=headers)
         self._request('GET', "/league/join/GfuUyJ", headers=headers)
 
@@ -489,17 +535,21 @@ class Depin:
                     if response and response.get('status') == 'success':
                         log(hju + f"Contribute Power success: {pth}{format(item_code)}")
                         time.sleep(1)
+                    elif response.get('message') == 'MSG_LEAGUE_MEMBER_NOT_EXIST':
+                        self.j_l(user_id)
                     else:
                         log(mrh + response.get('message'))
         
-        amount = random.randint(500, 1000)
+        amount = random.randint(1200, 3100)
         payload = {"amount": amount}
         response = self._request('POST', f"/league/funding", headers=headers, json=payload)
         if response and response.get('status') == 'success':
             log(hju + f"Contribute Funding success: {pth}{amount}")
             time.sleep(3)
+        elif response.get('message') == 'MSG_LEAGUE_MEMBER_NOT_EXIST':
+            self.j_l(user_id)
         else:
-            log(htm + f"{response.get('message')}")
+            log(mrh + response.get('message'))
 
     def auto_buy_item(self, user_id: str, device_index: int, max_item_price: float):
         token = self.local_token(user_id)
